@@ -1,5 +1,4 @@
 #include <iostream>
-#include <vector>
 
 #include <gtk/gtk.h>
 #include <gio/gunixoutputstream.h>
@@ -14,19 +13,19 @@ typedef struct mouse_info {
 typedef struct ss_info {
 	int width;
 	int height;
-	int bytes;
+	char *type;
 } ss_info;
 
 typedef struct gtk_info {
 	cairo_surface_t *surface;
 	GtkWidget *window;
 	GtkWidget *drawing_area;
+	bool saving;
 } gtk_info;
 
 static mouse_info mh;
 static ss_info ss;
 static gtk_info gtk;
-static std::vector<char> v;
 static double colors[][3] = {
 	{1, 1, 1},
 	{0, 0, 1},
@@ -67,17 +66,23 @@ static void draw_brush(GtkWidget *widget, gdouble x, gdouble y)
 
 static gboolean button_press_cb(GtkWidget *widget, GdkEventButton *event, gpointer data)
 {
+	if (gtk.saving)
+	{
+		return true;
+	}
 	// draw button (lmb)
-	if (event->button == GDK_BUTTON_PRIMARY)
+	else if (event->button == GDK_BUTTON_PRIMARY)
 	{
 		draw_brush(widget, event->x, event->y);
 	}
 	// output and quit button (rmb)
 	else if (event->button == GDK_BUTTON_SECONDARY)
 	{
+		// prevent any more events from coming out
+		gtk.saving = true;
 		GdkPixbuf* buf = gdk_pixbuf_get_from_surface(gtk.surface, 0, 0, ss.width, ss.height);
 		GOutputStream *ostream = g_unix_output_stream_new(1, true);
-		gdk_pixbuf_save_to_stream(buf, ostream, "png", NULL, NULL);
+		gdk_pixbuf_save_to_stream(buf, ostream, ss.type, NULL, NULL);
 
 		clean_and_close();
 	}
@@ -86,7 +91,11 @@ static gboolean button_press_cb(GtkWidget *widget, GdkEventButton *event, gpoint
 
 static gboolean motion_notify_cb(GtkWidget *widget, GdkEventMotion *event, gpointer data)
 {
-	if (event->state & GDK_BUTTON1_MASK)
+	if (gtk.saving)
+	{
+		return true;
+	}
+	else if (event->state & GDK_BUTTON1_MASK)
 	{
 		draw_brush(widget, event->x, event->y);
 	}
@@ -134,6 +143,8 @@ static gboolean draw_cb(GtkWidget *widget, cairo_t *cr, gpointer data)
 static void set_sizes(GdkPixbufLoader *loader, gint width, gint height, gpointer data)
 {
 	gtk_window_set_default_size(GTK_WINDOW(gtk.window), width, height);
+	GdkPixbufFormat *format = gdk_pixbuf_loader_get_format(loader);
+	ss.type = gdk_pixbuf_format_get_extensions(format)[0];
 	ss.width = width;
 	ss.height = height;
 }
@@ -146,10 +157,15 @@ static void activate(GtkApplication *app, gpointer data)
 
 	GdkPixbufLoader *loader = gdk_pixbuf_loader_new();
 	g_signal_connect(G_OBJECT(loader), "size_prepared", G_CALLBACK(set_sizes), NULL);
-	gdk_pixbuf_loader_write(loader, (const guchar*) data, ss.bytes, NULL);
+
+	char c;
+	while (std::cin.get(c))
+	{
+		unsigned char c2 = static_cast<unsigned char>(c);
+		gdk_pixbuf_loader_write(loader, &c2, 1, NULL);
+	}
+
 	gdk_pixbuf_loader_close(loader, NULL);
-	v.clear();
-	v.shrink_to_fit();
 	GdkPixbuf* buf = gdk_pixbuf_loader_get_pixbuf(loader);
 	
 	gtk.drawing_area = gtk_drawing_area_new();
@@ -166,18 +182,8 @@ static void activate(GtkApplication *app, gpointer data)
 
 int main (int argc, char **argv)
 {
-	char c;
-	while (std::cin.get(c))
-	{
-		v.push_back(c);
-		ss.bytes++;
-	}
-	char* data = &v[0];
-
 	GtkApplication *app = gtk_application_new("ml.rhkr.ieditor", G_APPLICATION_FLAGS_NONE);
-	g_signal_connect(app, "activate", G_CALLBACK(activate), data);
+	g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
 
-	int status = g_application_run(G_APPLICATION(app), argc, argv);
-
-	return status;
+	return g_application_run(G_APPLICATION(app), argc, argv);
 }
