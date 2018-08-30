@@ -1,4 +1,4 @@
-A simple image editor built with GTK+ which is designed for scribbling on an image before sending it off somewhere. Give it input through stdin, draw some stuff, quit, and it will stream a PNG file's contents through stdout once you quit.
+A simple image editor built with GTK+ which is designed for scribbling on an image before sending it off somewhere. Give it input through stdin, draw some stuff, quit, and it will spit out file contents through stdout in (probably) whatever format you gave it.
 
 ##### Building:
 ```
