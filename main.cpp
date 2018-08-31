@@ -142,7 +142,7 @@ static gboolean draw_cb(GtkWidget *widget, cairo_t *cr, gpointer data)
 
 static void set_sizes(GdkPixbufLoader *loader, gint width, gint height, gpointer data)
 {
-	gtk_window_set_default_size(GTK_WINDOW(gtk.window), width, height);
+	gtk_window_set_default_size(GTK_WINDOW(gtk.window), width + 10, height + 10);
 	GdkPixbufFormat *format = gdk_pixbuf_loader_get_format(loader);
 	ss.type = gdk_pixbuf_format_get_extensions(format)[0];
 	ss.width = width;
