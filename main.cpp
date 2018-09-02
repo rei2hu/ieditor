@@ -76,7 +76,7 @@ static gboolean button_press_cb(GtkWidget *widget, GdkEventButton *event, gpoint
 		draw_brush(widget, event->x, event->y);
 	}
 	// output and quit button (rmb)
-	else if (event->button == GDK_BUTTON_SECONDARY)
+	else if (event->button == GDK_BUTTON_SECONDARY && ss.width != NULL)
 	{
 		// prevent any more events from coming out
 		gtk.saving = true;
